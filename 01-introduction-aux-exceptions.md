@@ -173,10 +173,42 @@ public class ExempleIOException {
         } catch (IOException e) {
             System.out.println("Fichier introuvable : " + e.getMessage());
         }
+        catch (Exception e) {
+            System.out.println("Erreur générale : " + e.getMessage());
+        }
     }
 }
 ```
 
+Ce code n'est pas correcte, car nous allons jamais arriver à ce bloc
+
+
+```java
+ catch (IOException e) {
+            System.out.println("Fichier introuvable : " + e.getMessage());
+        }
+
+```
+
+Lecture d’un fichier qui n’existe pas :
+
+```java
+import java.io.*;
+
+public class ExempleIOException {
+    public static void main(String[] args) {
+        try {
+            FileReader fr = new FileReader("inexistant.txt"); // IOException
+        } catch (Exception e) {
+            System.out.println("Erreur générale : " + e.getMessage());
+        }
+        catch (IOException e) {
+            System.out.println("Fichier introuvable : " + e.getMessage());
+        }
+        
+    }
+}
+```
 
 
 ### 7.2. `SQLException`
