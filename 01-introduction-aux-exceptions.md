@@ -157,3 +157,178 @@ On **ne cherche pas** à gérer un `Error` avec `try/catch` dans le code métier
 Une **`Exception`** représente une erreur fonctionnelle ou logique (fichier introuvable, entrée invalide, problème réseau) que le programme est censé prévoir et traiter.
 En pratique : `Error` = problème système critique, `Exception` = erreur applicative à gérer proprement.
 
+
+
+### 7.1. `IOException`
+
+Lecture d’un fichier qui n’existe pas :
+
+```java
+import java.io.*;
+
+public class ExempleIOException {
+    public static void main(String[] args) {
+        try {
+            FileReader fr = new FileReader("inexistant.txt"); // IOException
+        } catch (IOException e) {
+            System.out.println("Fichier introuvable : " + e.getMessage());
+        }
+    }
+}
+```
+
+
+
+### 7.2. `SQLException`
+
+Connexion à une BD avec une URL invalide :
+
+```java
+import java.sql.*;
+
+public class ExempleSQLException {
+    public static void main(String[] args) {
+        try {
+            Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/mauvaiseBD",
+                "user",
+                "motdepasse"
+            ); // SQLException probable
+        } catch (SQLException e) {
+            System.out.println("Erreur SQL : " + e.getMessage());
+        }
+    }
+}
+```
+
+
+
+### 7.3. `NullPointerException`
+
+Utilisation d’une référence à `null` :
+
+```java
+public class ExempleNullPointer {
+    public static void main(String[] args) {
+        String nom = null;
+        System.out.println(nom.length()); // NullPointerException
+    }
+}
+```
+
+
+
+### 7.4. `ArithmeticException`
+
+Division par zéro :
+
+```java
+public class ExempleArithmetic {
+    public static void main(String[] args) {
+        int a = 10;
+        int b = 0;
+        int res = a / b; // ArithmeticException: / by zero
+    }
+}
+```
+
+
+
+### 7.5. `ArrayIndexOutOfBoundsException`
+
+Accès à un index invalide dans un tableau :
+
+```java
+public class ExempleArrayIndexOutOfBounds {
+    public static void main(String[] args) {
+        int[] tab = {1, 2, 3};
+        System.out.println(tab[5]); // ArrayIndexOutOfBoundsException
+    }
+}
+```
+
+
+
+### 7.6. `IllegalArgumentException`
+
+Argument invalide passé à une méthode :
+
+```java
+public class ExempleIllegalArgument {
+    public static void main(String[] args) {
+        setAge(-5); // IllegalArgumentException
+    }
+
+    public static void setAge(int age) {
+        if (age < 0) {
+            throw new IllegalArgumentException("L'âge ne peut pas être négatif.");
+        }
+        // ...
+    }
+}
+```
+
+
+
+<br/>
+
+# Annexe 1
+
+
+En Java, une **exception checked** doit obligatoirement être déclarée avec `throws` ou entourée d’un `try/catch`, sinon le code ne compile pas (ex. `IOException`, `SQLException`).
+Les exceptions checked représentent des problèmes externes prévisibles : fichiers, réseau, base de données, etc., que l’on est censé gérer explicitement.
+Une **exception unchecked** (ou **RuntimeException**) n’est pas imposée par le compilateur : on peut la laisser remonter sans `throws` ni `try/catch` (ex. `NullPointerException`, `ArithmeticException`, `IllegalArgumentException`).
+Les exceptions unchecked représentent souvent des bugs de programmation ou des erreurs de logique (mauvais index, argument invalide, variable `null`).
+En résumé : **checked = obligatoires à gérer / déclarer**, **unchecked = facultatives à gérer mais généralement révélatrices d’un problème dans le code**.
+
+
+
+| Exception                        | Type                    | Quand ça arrive ?                                               | Message typique                             |
+| -------------------------------- | ----------------------- | --------------------------------------------------------------- | ------------------------------------------- |
+| `IOException`                    | **Checked**             | Problème d’entrée/sortie (fichier manquant, lecture impossible) | `No such file or directory`                 |
+| `SQLException`                   | **Checked**             | Erreur avec la base de données (connexion, requête, driver…)    | `Communications link failure`, etc.         |
+| `NullPointerException`           | **Unchecked (Runtime)** | Utilisation d’une référence `null`                              | `Cannot invoke "X.y()" because ... is null` |
+| `ArithmeticException`            | **Unchecked (Runtime)** | Division par zéro, calcul arithmétique impossible               | `/ by zero`                                 |
+| `ArrayIndexOutOfBoundsException` | **Unchecked (Runtime)** | Index de tableau en dehors des bornes                           | `Index 5 out of bounds for length 3`        |
+| `IllegalArgumentException`       | **Unchecked (Runtime)** | Argument invalide passé à une méthode                           | `Invalid value for ...`                     |
+
+
+### Mini-exemples de code
+
+```java
+// IOException
+FileReader fr = new FileReader("inexistant.txt"); // IOException
+```
+
+```java
+// SQLException
+Connection c = DriverManager.getConnection("jdbc:mysql://localhost:3306/mauvaiseBD", "user", "pwd"); // SQLException
+```
+
+```java
+// NullPointerException
+String nom = null;
+System.out.println(nom.length()); // NullPointerException
+```
+
+```java
+// ArithmeticException
+int a = 10, b = 0;
+int r = a / b; // ArithmeticException
+```
+
+```java
+// ArrayIndexOutOfBoundsException
+int[] t = {1, 2, 3};
+System.out.println(t[5]); // ArrayIndexOutOfBoundsException
+```
+
+```java
+// IllegalArgumentException
+void setAge(int age) {
+    if (age < 0) {
+        throw new IllegalArgumentException("L'âge ne peut pas être négatif.");
+    }
+}
+```
+
