@@ -42,7 +42,7 @@ Idée simple :
 
 <br/>­
 
-## 3. Exemple avec `NullPointerException`
+# 3. Exemple avec `NullPointerException`
 
 ```java
 public class TestNull {
@@ -60,7 +60,7 @@ public class TestNull {
 
 <br/>­
 
-## 4. `finally` : ce qui s’exécute toujours
+# 4. `finally` : ce qui s’exécute toujours
 
 Le bloc `finally` est optionnel, mais s’exécute **dans tous les cas** :
 – qu’il y ait une exception ou non.
@@ -82,7 +82,7 @@ public class TestFinally {
 
 <br/>­
 
-## 5. Résumé ultra court
+# 5. Résumé 
 
 * Une **exception** = erreur à l’exécution.
 * `try` contient le code “à risque”.
@@ -103,7 +103,7 @@ try {
 
 <br/>­
 
-## 6. Exemple à tester soi-même
+# 6. Exemple à tester 
 
 ```java
 public class DivisionSafe {
@@ -122,3 +122,32 @@ public class DivisionSafe {
     }
 }
 ```
+
+
+<br/>­
+
+# 7. Arboresnce des exceptions
+
+```mermaid
+graph TD
+    Throwable
+
+    Throwable --> Error
+    Throwable --> Exception
+
+    %% Sous-classe Error (erreurs JVM, en général non gérées)
+    Error --> OutOfMemoryError
+    Error --> StackOverflowError
+
+    %% Sous-classe Exception
+    Exception --> IOException
+    Exception --> SQLException
+    Exception --> RuntimeException
+
+    %% Sous-classe RuntimeException (exceptions non vérifiées)
+    RuntimeException --> NullPointerException
+    RuntimeException --> ArithmeticException
+    RuntimeException --> ArrayIndexOutOfBoundsException
+    RuntimeException --> IllegalArgumentException
+```
+
