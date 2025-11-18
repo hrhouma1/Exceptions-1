@@ -694,3 +694,193 @@ graph TD
     RuntimeException --> IllegalArgumentException
 ```
 
+
+<br/>
+
+# Annexe 4 - Construire une exception personnalisée
+
+> Objectif : Construire un **petit scénario complet** avec une exception personnalisée, `throw` et `throws`, et la *remontée* jusqu’à la méthode appelante.
+
+## 1. Objectif du scénario
+
+Scénario :
+On gère un **compte bancaire**.
+Si on essaie de retirer plus que le solde, on lève une **exception personnalisée** :
+
+* `SoldeInsuffisantException` (checked)
+* levée avec `throw`
+* propagée avec `throws` vers la méthode appelante
+* rattrapée dans `main` avec `try / catch`
+
+
+
+## 2. Exception personnalisée
+
+```java
+// Exception personnalisée : checked (hérite de Exception)
+public class SoldeInsuffisantException extends Exception {
+
+    public SoldeInsuffisantException(String message) {
+        super(message);
+    }
+}
+```
+
+Idée : `extends Exception` → exception **checked**
+Donc Java **oblige** à l’annoncer avec `throws` ou à la gérer.
+
+
+
+## 3. Classe CompteBancaire : on LÈVE l’exception (throw)
+
+```java
+public class CompteBancaire {
+
+    private String numero;
+    private double solde;
+
+    public CompteBancaire(String numero, double soldeInitial) {
+        this.numero = numero;
+        this.solde = soldeInitial;
+    }
+
+    public String getNumero() {
+        return numero;
+    }
+
+    public double getSolde() {
+        return solde;
+    }
+
+    /**
+     * Retire un montant du compte.
+     * @throws SoldeInsuffisantException si le solde est insuffisant
+     */
+    public void retirer(double montant) throws SoldeInsuffisantException {
+        if (montant <= 0) {
+            throw new IllegalArgumentException("Le montant doit être strictement positif.");
+        }
+
+        if (montant > solde) {
+            // ICI : on CRÉE et on LANCE l'exception personnalisée
+            throw new SoldeInsuffisantException(
+                "Solde insuffisant sur le compte " + numero +
+                " (solde = " + solde + ", demande = " + montant + ")"
+            );
+        }
+
+        solde -= montant;
+    }
+
+    public void deposer(double montant) {
+        if (montant <= 0) {
+            throw new IllegalArgumentException("Le montant doit être strictement positif.");
+        }
+        solde += montant;
+    }
+}
+```
+
+Points importants :
+
+* `throws SoldeInsuffisantException` dans la **signature** → la méthode **peut** lever cette exception.
+* `throw new SoldeInsuffisantException(...)` dans le **corps** → on **lance** concrètement l’exception.
+* Les erreurs de logique (`montant <= 0`) utilisent une `IllegalArgumentException` (unchecked).
+
+
+
+## 4. ServiceBanque : on PROPAGE l’exception (throws)
+
+On ajoute une couche “service” qui appelle le compte.
+Elle ne gère pas l’exception, elle la **relaye** :
+
+```java
+public class ServiceBanque {
+
+    /**
+     * Effectue un retrait et affiche un log de l'opération.
+     * Propage l'exception SoldeInsuffisantException à l'appelant.
+     */
+    public void effectuerRetrait(CompteBancaire compte, double montant)
+            throws SoldeInsuffisantException {
+
+        System.out.println("Tentative de retrait de " + montant +
+                           " sur le compte " + compte.getNumero());
+
+        // Ici, on n'utilise PAS de try/catch.
+        // On laisse la méthode CompteBancaire.retirer(...) lancer l'exception,
+        // et on PROPAGE avec 'throws' dans la signature.
+        compte.retirer(montant);
+
+        System.out.println("Retrait effectué. Nouveau solde = " + compte.getSolde());
+    }
+}
+```
+
+Ici :
+
+* `throws SoldeInsuffisantException` dans `effectuerRetrait` → le service **n’absorbe pas** l’erreur, il la laisse remonter.
+
+
+
+## 5. Main : on ATTRAPE l’exception (try / catch)
+
+C’est dans `main` qu’on décide **comment réagir** :
+
+```java
+public class DemoBanque {
+
+    public static void main(String[] args) {
+        CompteBancaire compte = new CompteBancaire("ABC-123", 100.0);
+        ServiceBanque service = new ServiceBanque();
+
+        System.out.println("Solde initial : " + compte.getSolde());
+
+        try {
+            // 1er retrait : OK
+            service.effectuerRetrait(compte, 40);
+            System.out.println("Solde après 1er retrait : " + compte.getSolde());
+
+            // 2e retrait : va déclencher l'exception
+            service.effectuerRetrait(compte, 100);
+
+            System.out.println("Cette ligne ne sera pas exécutée si l'exception est levée.");
+
+        } catch (SoldeInsuffisantException e) {
+            // ICI : point central de gestion de l’erreur métier
+            System.out.println("OPÉRATION REFUSÉE : " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            System.out.println("Paramètres invalides : " + e.getMessage());
+        }
+
+        System.out.println("Solde final : " + compte.getSolde());
+        System.out.println("Fin du programme.");
+    }
+}
+```
+
+
+
+## 6. Lecture du flux
+
+1. `main` appelle `service.effectuerRetrait(compte, 100)`.
+2. `effectuerRetrait` appelle `compte.retirer(100)`.
+3. Dans `retirer`, le test `montant > solde` est vrai → `throw new SoldeInsuffisantException(...)`.
+4. L’exception remonte :
+
+   * de `retirer` vers `effectuerRetrait` (qui l’a déclarée avec `throws`)
+   * de `effectuerRetrait` vers `main` (qui l’a aussi déclarée via `throws`… dans la signature ? Non, ici `main` la gère directement avec `try / catch`).
+5. Le `catch (SoldeInsuffisantException e)` dans `main` intercepte l’exception et affiche le message métier.
+
+
+
+## 7. Résumé technique
+
+* `throw` : utilisé **dans** une méthode pour **lancer** une exception à un endroit précis.
+* `throws` : utilisé **dans la signature** pour **annoncer** que la méthode **peut** lancer cette exception.
+* Une méthode peut :
+
+  * gérer l’exception (try/catch),
+  * ou simplement la **propager** (`throws`), en laissant la méthode appelante décider.
+* Une exception personnalisée permet de représenter clairement un **problème métier** (`SoldeInsuffisantException`) plutôt qu’un simple message générique.
+
