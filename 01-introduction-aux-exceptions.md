@@ -884,3 +884,160 @@ public class DemoBanque {
   * ou simplement la **propager** (`throws`), en laissant la méthode appelante décider.
 * Une exception personnalisée permet de représenter clairement un **problème métier** (`SoldeInsuffisantException`) plutôt qu’un simple message générique.
 
+
+<br/>
+
+# Annexe 5 - Pourquoi remonter une expception ?
+
+On **remonte** une exception quand la méthode courante n’est pas le bon endroit pour décider *quoi faire* avec l’erreur.
+Cela permet de laisser une **couche plus haut niveau** (ex. le service, le contrôleur, le `main`) choisir la bonne réaction : afficher un message, annuler une transaction, journaliser, renvoyer une réponse HTTP, etc.
+Remonter l’exception garde aussi la méthode plus **claire et focalisée** sur sa tâche métier (lire un fichier, calculer un taux, débiter un compte), sans la polluer avec toute la logique d’affichage ou de récupération.
+Selon le contexte d’appel, on peut **traiter la même exception différemment** (ex. en mode batch on logge et on continue, en mode interactif on affiche une alerte).
+En résumé, on remonte une exception pour **centraliser la gestion des erreurs**, respecter la **séparation des responsabilités** et garder le code plus souple et réutilisable.
+
+### Explication simple
+
+## 1. Idée simple : qui sait quoi faire avec l’erreur ?
+
+Souvent, **la méthode qui détecte l’erreur** ne sait pas **quoi faire** avec.
+
+Exemple : une méthode qui lit un fichier de config.
+
+```java
+public String lireConfig(String chemin) throws IOException {
+    return Files.readString(Path.of(chemin));
+}
+```
+
+Cette méthode :
+
+* sait **comment** lire un fichier,
+* mais ne sait pas **quoi faire** si le fichier manque :
+
+  * demander à l’utilisateur un autre chemin ?
+  * utiliser une config par défaut ?
+  * arrêter le programme ?
+  * loguer dans un fichier ?
+
+Donc elle **remonte l’exception** (`throws IOException`) et laisse le **code appelant décider**.
+
+
+
+## 2. Même erreur, réactions différentes
+
+Imaginons deux contextes qui appellent `lireConfig` :
+
+### a) Application console
+
+```java
+public static void main(String[] args) {
+    try {
+        String conf = lireConfig("config.txt");
+        System.out.println("Config chargée.");
+    } catch (IOException e) {
+        System.out.println("Erreur de config, arrêt du programme.");
+        System.exit(1);
+    }
+}
+```
+
+Ici, réaction : **on arrête tout**.
+
+
+
+### b) Application graphique
+
+```java
+public void chargerConfigDepuisBouton() {
+    try {
+        String conf = lireConfig("config.txt");
+        JOptionPane.showMessageDialog(null, "Config chargée.");
+    } catch (IOException e) {
+        JOptionPane.showMessageDialog(
+            null,
+            "Impossible de lire la config.\nChoisissez un autre fichier.",
+            "Erreur",
+            JOptionPane.ERROR_MESSAGE
+        );
+        // ici on pourrait ouvrir un file chooser, etc.
+    }
+}
+```
+
+Ici, réaction : **on affiche une boîte de dialogue** et on propose une solution.
+
+👉 **Même erreur technique** (`IOException`),
+👉 **réactions métier complètement différentes**.
+
+Si `lireConfig` “gérait” l’exception toute seule (genre `catch` + `System.out.println("erreur")`), tu serais coincé avec **une seule façon de réagir**, partout.
+
+**Remonter l’exception**, c’est juste dire :
+
+> “Je t’informe qu’il y a un problème, à toi (plus haut) de décider quoi faire.”
+
+
+
+## 3. Sans remontée : ça devient vite sale
+
+Version “je gère tout en bas” (et c’est là que ça devient moche) :
+
+```java
+public String lireConfig(String chemin) {
+    try {
+        return Files.readString(Path.of(chemin));
+    } catch (IOException e) {
+        System.out.println("Erreur de lecture config !");
+        return null;
+    }
+}
+```
+
+Problèmes :
+
+1. Tu perds la vraie cause (stack trace, message détaillé).
+2. Tu forces **toujours la même réaction** (`System.out.println`).
+3. Le code appelant doit maintenant deviner que `null` = échec… et peut l’oublier.
+
+Et plus tu as de méthodes comme ça, plus tu as :
+
+* des `catch` partout,
+* des `System.out.println` dispersés,
+* des comportements incohérents.
+
+
+
+## 4. Autre point : la couche “en haut” voit le contexte complet
+
+Une méthode “basse” (DAO, utilitaire, validation de champ) :
+
+* voit un **détail technique** (fichier, BD, division par zéro),
+* mais ne connaît pas **le contexte fonctionnel** (est-ce critique ? peut-on réessayer ? faut-il informer un autre système ?).
+
+La méthode plus haut (service, contrôleur, main) :
+
+* voit **la situation métier** (paiement, inscription, sauvegarde),
+* peut prendre une **décision cohérente** :
+
+  * loguer,
+  * annuler une transaction complète,
+  * envoyer un email,
+  * marquer une opération comme “à rejouer plus tard”, etc.
+
+Donc remonter l’exception = **remonter l’information** jusqu’à l’endroit où on a assez de contexte pour décider intelligemment.
+
+
+
+## 5. En résumé, sans bullshit
+
+Pourquoi remonter une exception ?
+
+1. Parce que la méthode qui voit l’erreur n’est pas toujours celle qui sait **décider quoi faire**.
+2. Parce que **le même problème technique** peut demander **des réactions différentes** selon le contexte.
+3. Parce que ça évite des `catch` laids et dupliqués partout.
+4. Parce que ça permet de **centraliser** la gestion d’erreurs à un niveau où on connaît le métier.
+5. Parce que “je catch tout en bas et je fais un `System.out.println`” finit **toujours** par exploser dans une vraie appli un peu grosse.
+
+Ça ne veut **pas** dire “il faut toujours remonter” → parfois tu gères localement (par ex. fermer une ressource, normaliser une valeur).
+Mais dès que la décision dépend du contexte global, **remonter est logique**.
+
+
