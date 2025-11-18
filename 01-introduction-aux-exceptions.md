@@ -547,4 +547,150 @@ public class Main {
 * Les exceptions **unchecked** (Runtime) peuvent être lancées avec `throw`, mais leur déclaration avec `throws` est optionnelle.
 
 
+<br/>
+
+# Annexe 3 - exemples
+
+
+1. Un cas avec un **`Error`** (pour montrer que c’est possible mais pas conseillé).
+2. Un cas avec des **exceptions spécialisées** et plusieurs `catch` du plus spécifique au plus général (jusqu’à `Error`).
+
+
+
+## 1. Exemple avec un `Error` (purement pédagogique)
+
+Normalement, on **ne lance pas** de `Error` soi-même, et on ne les rattrape presque jamais.
+Ici, c’est seulement pour **voir le mécanisme**.
+
+```java
+public class DemoError {
+    public static void main(String[] args) {
+        try {
+            // Simulation d'une situation catastrophique
+            // (exemple pédagogique, à ne pas faire en vrai)
+            throw new OutOfMemoryError("Simulation d'un gros problème mémoire.");
+        } catch (OutOfMemoryError e) {
+            System.out.println("[Error Spécifique] " + e.getMessage());
+        } catch (Error e) {
+            System.out.println("[Error Générique] Un problème grave est survenu.");
+        }
+
+        System.out.println("Fin du programme (si on a réussi à rattraper l'Error).");
+    }
+}
+```
+
+Points clés :
+
+* `throw new OutOfMemoryError(...)` → on **lance** un `Error` (simulé).
+* Premier `catch` : `OutOfMemoryError` (spécialisé).
+* Deuxième `catch` : `Error` (plus général).
+* Ordre **du plus spécifique au plus général**, sinon le compilateur refuse.
+
+
+
+## 2. Même idée avec des exceptions spécialisées + `Error` à la fin
+
+Ici, on prend un cas plus réaliste : lecture de fichier, bug logique, puis dernier recours.
+
+```java
+import java.io.*;
+
+public class DemoMultiCatch {
+    public static void main(String[] args) {
+        try {
+            // 1) Peut lancer FileNotFoundException (spécialisée)
+            lireFichier("inexistant.txt");
+
+            // 2) Peut lancer IllegalArgumentException (Runtime)
+            calculerTaux(-5);
+
+        } catch (FileNotFoundException e) {
+            System.out.println("[FileNotFoundException] Fichier introuvable : " + e.getMessage());
+
+        } catch (IOException e) {
+            System.out.println("[IOException] Problème d'entrée/sortie : " + e.getMessage());
+
+        } catch (IllegalArgumentException e) {
+            System.out.println("[IllegalArgumentException] Argument invalide : " + e.getMessage());
+
+        } catch (RuntimeException e) {
+            System.out.println("[RuntimeException] Autre erreur d'exécution : " + e.getMessage());
+
+        } catch (Error e) {
+            System.out.println("[Error] Problème grave (JVM / système).");
+
+        } catch (Throwable e) {
+            System.out.println("[Throwable] Dernier filet de sécurité : " + e.getClass().getName());
+        }
+
+        System.out.println("Fin du programme.");
+    }
+
+    // Méthode qui peut lancer une exception CHECKED
+    public static void lireFichier(String chemin) throws IOException {
+        FileReader fr = new FileReader(chemin); // FileNotFoundException
+        fr.close();
+    }
+
+    // Méthode qui peut lancer une exception UNCHECKED
+    public static double calculerTaux(int pourcentage) {
+        if (pourcentage < 0 || pourcentage > 100) {
+            throw new IllegalArgumentException("Le pourcentage doit être entre 0 et 100.");
+        }
+        return pourcentage / 100.0;
+    }
+}
+```
+
+### Ce que ça illustre
+
+* `lireFichier` déclare `throws IOException` → **checked**, propagée à `main`.
+
+* Si le fichier n’existe pas → `FileNotFoundException` (sous-classe de `IOException`), attrapée par le *premier* `catch`.
+
+* `calculerTaux` lance `IllegalArgumentException` (Runtime, donc **unchecked**), attrapée par son `catch` dédié.
+
+* Ensuite, on a une hiérarchie de `catch` :
+
+  1. `FileNotFoundException` → plus spécifique que `IOException`.
+  2. `IOException`
+  3. `IllegalArgumentException`
+  4. `RuntimeException`
+  5. `Error`
+  6. `Throwable` (tout le reste)
+
+* L’ordre est **obligatoirement** :
+  **du plus spécialisé vers le plus général**.
+  Sinon, les `catch` génériques rendraient les suivants inatteignables.
+
+
+
+`FileNotFoundException ⊂ IOException ⊂ Exception ⊂ Throwable`
+et
+`IllegalArgumentException ⊂ RuntimeException ⊂ Exception ⊂ Throwable`
+
+
+
+
+```mermaid
+graph TD
+
+    %% Racine
+    Throwable
+
+    %% Branches principales
+    Throwable --> Error
+    Throwable --> Exception
+
+    %% Sous-arbre Exception (checked + unchecked)
+    Exception --> IOException
+    Exception --> RuntimeException
+
+    %% Spécialisation : FileNotFoundException
+    IOException --> FileNotFoundException
+
+    %% Spécialisation : IllegalArgumentException
+    RuntimeException --> IllegalArgumentException
+```
 
