@@ -1027,7 +1027,7 @@ Donc remonter l’exception = **remonter l’information** jusqu’à l’endroi
 
 
 
-## 5. En résumé, sans bullshit
+## 5. En résumé
 
 Pourquoi remonter une exception ?
 
